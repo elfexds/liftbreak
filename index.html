@@ -2,47 +2,99 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <title>Lift (sin anuncios)</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Lift Game</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
       height: 100%;
-      background: #000;
       overflow: hidden;
+      background: #000;
+      font-family: sans-serif;
     }
     #unity-container {
       width: 100%;
       height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
       display: flex;
-      justify-content: center;
       align-items: center;
+      justify-content: center;
+      background: #000;
     }
     #unity-canvas {
       width: 100%;
       height: 100%;
       background: #000;
     }
-    #loading {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+    #unity-loading-bar {
+      width: 100%;
+      height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: white;
-      font-family: sans-serif;
+      position: absolute;
+      top: 0;
+      left: 0;
       background: #111;
+      z-index: 10;
+    }
+    #unity-progress-bar-empty {
+      width: 50%;
+      height: 20px;
+      background: #444;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    #unity-progress-bar-full {
+      width: 0%;
+      height: 100%;
+      background: #09f;
+    }
+    #unity-warning {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 255, 255, 0.9);
+      color: #000;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      display: none;
     }
   </style>
 </head>
 <body>
   <div id="unity-container">
     <canvas id="unity-canvas"></canvas>
+    <div id="unity-loading-bar">
+      <div id="unity-progress-bar-empty">
+        <div id="unity-progress-bar-full"></div>
+      </div>
+    </div>
+    <div id="unity-warning"></div>
   </div>
-  <div id="loading">Cargando juego...</div>
+
+  <script>
+    // --- Fake SDK para bloquear anuncios ---
+    window.SDK = {
+      init() { return Promise.resolve(); },
+      showBanner() { console.log("Ad bloqueado (banner)"); },
+      showRewardedAd() { 
+        console.log("Ad bloqueado (reward)"); 
+        return Promise.resolve(); 
+      },
+      showInterstitialAd() { 
+        console.log("Ad bloqueado (interstitial)"); 
+        return Promise.resolve(); 
+      }
+    };
+    window.GameMonetize = window.SDK;
+  </script>
 
   <script>
     const buildUrl = "./";
@@ -56,21 +108,33 @@
       companyName: "DefaultCompany",
       productName: "Lift",
       productVersion: "1.0",
-      showBanner: () => {}
+      decompressionFallback: true
     };
 
     const canvas = document.querySelector("#unity-canvas");
-    const loading = document.querySelector("#loading");
+    const loadingBar = document.querySelector("#unity-loading-bar");
+    const progressBarFull = document.querySelector("#unity-progress-bar-full");
+    const warningBanner = document.querySelector("#unity-warning");
 
+    function unityShowBanner(msg, type) {
+      warningBanner.style.display = "block";
+      warningBanner.innerHTML = msg;
+      if (type === "error") warningBanner.style.background = "red";
+      else if (type === "warning") warningBanner.style.background = "yellow";
+      else warningBanner.style.background = "rgba(255,255,255,0.9)";
+    }
+
+    // Cargar el loader
     const script = document.createElement("script");
     script.src = loaderUrl;
     script.onload = () => {
       createUnityInstance(canvas, config, (progress) => {
-        loading.textContent = "Cargando: " + Math.round(progress * 100) + "%";
+        progressBarFull.style.width = (100 * progress) + "%";
       }).then((unityInstance) => {
-        loading.style.display = "none";
+        loadingBar.style.display = "none";
+        console.log("Juego cargado ✅");
       }).catch((message) => {
-        alert("Error al cargar: " + message);
+        alert("Error al cargar el juego: " + message);
       });
     };
     document.body.appendChild(script);
